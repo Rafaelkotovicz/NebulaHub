@@ -176,7 +176,7 @@
                   <input id="authPassword" name="password" type="password" autocomplete="current-password" required placeholder=" ">
                   <label for="authPassword">Senha</label>
                   <button class="password-toggle" id="passwordToggle" type="button" aria-label="Mostrar senha" title="Mostrar senha">
-                    <span aria-hidden="true">ðŸª</span>
+                    <span class="eye-icon" aria-hidden="true"></span>
                   </button>
                   <small class="field-error"></small>
                 </div>
