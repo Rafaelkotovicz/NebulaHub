@@ -1,4 +1,4 @@
-const app = document.querySelector("#app");
+﻿const app = document.querySelector("#app");
 
     const assets = {
       movies: [
@@ -42,16 +42,8 @@ const app = document.querySelector("#app");
       ]
     };
 
-    const userProfiles = [
-      { id: "kenzo", name: "Kenzo", icon: "🪐", role: "Explorador-chefe" },
-      { id: "luna", name: "Luna", icon: "🌙", role: "Curadora lunar" },
-      { id: "orion", name: "Orion", icon: "🚀", role: "Piloto de maratonas" },
-      { id: "nova", name: "Nova", icon: "✨", role: "Visitante estelar" }
-    ];
-
     const routes = {
       "/": renderAuth,
-      "/usuarios": renderUsers,
       "/hub": renderHub,
       "/filmes": () => renderCatalog("movies"),
       "/series": () => renderCatalog("series"),
@@ -68,14 +60,36 @@ const app = document.querySelector("#app");
     }
 
     function navigate(path) {
+      const currentPath = getRoute();
+      if (path === "/player" && ["/filmes", "/series"].includes(currentPath)) {
+        sessionStorage.setItem("nebulaPlayerReturnRoute", currentPath);
+      }
       history.pushState({ route: path }, "", routeHref(path));
       render();
+    }
+
+    function getSessionUserName() {
+      return sessionStorage.getItem("nebulaSessionUser") || "Explorador";
+    }
+
+    function getPlayerReturnRoute() {
+      const savedRoute = sessionStorage.getItem("nebulaPlayerReturnRoute");
+      return ["/filmes", "/series"].includes(savedRoute) ? savedRoute : "/filmes";
     }
 
     function render() {
       const path = getRoute();
       routes[path]();
       setActiveNav(path);
+      normalizeFavoriteButtons();
+    }
+
+    function normalizeFavoriteButtons() {
+      document.querySelectorAll("[data-fav]").forEach((button) => {
+        const active = button.classList.contains("active");
+        button.innerHTML = active ? "&#9733;" : "&#9734;";
+        button.setAttribute("aria-pressed", active ? "true" : "false");
+      });
     }
 
     function getRoute() {
@@ -83,16 +97,17 @@ const app = document.querySelector("#app");
       return routes[queryRoute] ? queryRoute : "/";
     }
 
-    function getActiveProfile() {
-      const savedProfile = localStorage.getItem("nebulaProfile");
-      return userProfiles.find((profile) => profile.id === savedProfile) || userProfiles[0];
-    }
-
     window.addEventListener("popstate", render);
     document.addEventListener("click", (event) => {
       const link = event.target.closest("[data-route]");
       if (!link) return;
       event.preventDefault();
+      if (link.dataset.logout) {
+        sessionStorage.removeItem("nebulaSessionUser");
+      }
+      if (link.dataset.playerReturn) {
+        sessionStorage.setItem("nebulaPlayerReturnRoute", link.dataset.playerReturn);
+      }
       navigate(link.dataset.route);
     });
 
@@ -112,7 +127,7 @@ const app = document.querySelector("#app");
               <button data-route="/biblioteca">Biblioteca</button>
             </nav>
             <div class="topbar-actions">
-              <button class="search-button" type="button" aria-label="Buscar">⌕</button>
+              <button class="search-button" type="button" aria-label="Buscar">&#8981;</button>
               <button class="profile-pill" type="button" data-route="/">Sair</button>
             </div>
           </header>
@@ -161,7 +176,7 @@ const app = document.querySelector("#app");
                   <input id="authPassword" name="password" type="password" autocomplete="current-password" required placeholder=" ">
                   <label for="authPassword">Senha</label>
                   <button class="password-toggle" id="passwordToggle" type="button" aria-label="Mostrar senha" title="Mostrar senha">
-                    <span aria-hidden="true">🪐</span>
+                    <span aria-hidden="true">ðŸª</span>
                   </button>
                   <small class="field-error"></small>
                 </div>
@@ -328,51 +343,13 @@ const app = document.querySelector("#app");
           return;
         }
 
-        note.textContent = mode === "signup" ? "Conta criada. Escolha seu perfil..." : "Bem-vindo de volta. Escolha seu perfil...";
-        setTimeout(() => navigate("/usuarios"), 420);
+        const sessionName = mode === "signup" ? name.value.trim() : email.value.trim().split("@")[0];
+        sessionStorage.setItem("nebulaSessionUser", sessionName || "Explorador");
+        note.textContent = mode === "signup" ? "Conta criada. Abrindo seu hub..." : "Bem-vindo de volta. Abrindo seu hub...";
+        setTimeout(() => navigate("/hub"), 420);
       });
 
       setMode("login");
-    }
-
-    function renderUsers() {
-      window.onpointermove = null;
-      app.innerHTML = `
-        <section class="screen page users-screen">
-          <div class="star-layer" id="stars"></div>
-          <div class="orb-layer" id="orbs"></div>
-          <button class="dimension-back users-back" type="button" data-route="/">← Voltar ao inicio</button>
-          <div class="users-shell">
-            <header class="users-title">
-              <span>Nebula Hub</span>
-              <h1>Quem vai explorar?</h1>
-              <p>Escolha um perfil para sincronizar seu universo.</p>
-            </header>
-            <section class="users-grid" aria-label="Perfis de usuario">
-              ${userProfiles.map((profile) => userCard(profile)).join("")}
-            </section>
-          </div>
-          <button class="help-fab" type="button" aria-label="Ajuda">?</button>
-        </section>
-      `;
-      createStars(96);
-      createOrbs();
-      document.querySelectorAll("[data-user]").forEach((button) => {
-        button.addEventListener("click", () => {
-          localStorage.setItem("nebulaProfile", button.dataset.user);
-          navigate("/hub");
-        });
-      });
-    }
-
-    function userCard(profile) {
-      return `
-        <button class="user-card" type="button" data-user="${profile.id}">
-          <span class="user-orbit" aria-hidden="true"><span>${profile.icon}</span></span>
-          <strong>${profile.name}</strong>
-          <small>${profile.role}</small>
-        </button>
-      `;
     }
 
     function clearFieldErrors() {
@@ -426,24 +403,31 @@ const app = document.querySelector("#app");
 
     function renderHub() {
       window.onpointermove = null;
-      const profile = getActiveProfile();
+      const userName = getSessionUserName();
       app.innerHTML = `
         <section class="screen page hub-screen initial-hub">
           <div class="star-layer" id="stars"></div>
           <div class="orb-layer" id="orbs"></div>
           <div class="nebula-mist" aria-hidden="true"></div>
           <div class="hub-account-bar">
-            <button class="active-user" type="button" data-route="/usuarios">
-              <span aria-hidden="true">${profile.icon}</span>
-              <strong>${profile.name}</strong>
-            </button>
-            <button class="logout-button" type="button" data-route="/">Sair da conta</button>
+            <details class="account-menu">
+              <summary class="logout-button">Minha Conta</summary>
+              <div class="account-menu-panel">
+                <div class="account-menu-user">
+                  <span>Usuario logado</span>
+                  <strong>${userName}</strong>
+                </div>
+                <button type="button" data-route="/biblioteca">Biblioteca</button>
+                <button type="button" data-route="/leitor">Ultima leitura</button>
+                <button class="danger" type="button" data-route="/" data-logout="true">Sair da conta</button>
+              </div>
+            </details>
           </div>
           <div class="universe-shell">
             <header class="universe-title">
               <div class="universe-heading">
                 <div class="universe-title-copy">
-                  <span>Orbita de ${profile.name}</span>
+                  <span>Nebula Hub</span>
                   <h1>Escolha seu universo</h1>
                   <p>Selecione uma dimensao para entrar.</p>
                 </div>
@@ -455,11 +439,6 @@ const app = document.querySelector("#app");
               ${universeCard("/series", "Series", "Cronicas Infinitas", "symbol-series", "linear-gradient(135deg, #1d63ff, #07a8d8)", "Temporadas, progresso e episodios recentes.", "Abrir cronicas")}
               ${universeCard("/mangas", "Mangas", "Dimensao Nippon", "symbol-manga", "linear-gradient(135deg, #9b23ea, #ff008c)", "Capitulos, categorias e leitura imersiva.", "Abrir mangas")}
             </section>
-            <nav class="hub-quick-nav" aria-label="Atalhos">
-              <button type="button" data-route="/biblioteca">Biblioteca</button>
-              <button type="button" data-route="/usuarios">Trocar perfil</button>
-              <button type="button" data-route="/leitor">Ultima leitura</button>
-            </nav>
           </div>
           <button class="help-fab" type="button" aria-label="Ajuda">?</button>
         </section>
@@ -674,7 +653,7 @@ const app = document.querySelector("#app");
       app.innerHTML = `
         <section class="screen page dimension-screen ${config.className}" style="${dimensionVars(config)}">
           ${config.effect || ""}
-          <button class="dimension-back" type="button" data-route="/hub">← Voltar ao Hub</button>
+          <button class="dimension-back" type="button" data-route="/hub">&larr; Voltar ao Hub</button>
           <header class="dimension-header">
             <span class="dimension-symbol ${config.symbol}" aria-hidden="true"></span>
             <h1>${config.title}</h1>
@@ -764,7 +743,7 @@ const app = document.querySelector("#app");
             <small>${details.length}</small>
             <div class="card-actions">
               <button class="ghost" data-route="${config.actionRoute}">${details.action}</button>
-              <button class="icon-button" title="Favoritar" aria-label="Favoritar" data-fav="${index}">&#9734;</button>
+              <button class="icon-button" title="Favoritar" aria-label="Favoritar" aria-pressed="false" data-fav="${index}">&#9734;</button>
             </div>
           </div>
         </article>
@@ -845,6 +824,7 @@ const app = document.querySelector("#app");
 
     function renderPlayer() {
       window.onpointermove = null;
+      const returnRoute = getPlayerReturnRoute();
       app.innerHTML = `
         <section class="screen page player-screen">
           <div class="player-stage" id="playerStage">
@@ -856,11 +836,11 @@ const app = document.querySelector("#app");
               <div class="player-controls">
                 <div class="progress" id="progress"><div class="progress-bar" id="progressBar"></div></div>
                 <div class="control-row">
-                  <button class="control-btn" id="playBtn" title="Play/Pause" aria-label="Play/Pause">â…¡</button>
+                  <button class="control-btn" id="playBtn" title="Play/Pause" aria-label="Pausar">&#10074;&#10074;</button>
                   <span class="time" id="time">42:18 / 1:52:00</span>
                   <input class="volume" id="volume" type="range" min="0" max="100" value="74" aria-label="Volume">
-                  <button class="ghost" data-route="/filmes">Voltar</button>
-                  <button class="control-btn" title="Tela cheia" aria-label="Tela cheia">â›¶</button>
+                  <button class="ghost" data-route="${returnRoute}">Voltar</button>
+                  <button class="control-btn" id="fullscreenBtn" title="Tela cheia" aria-label="Tela cheia">&#9974;</button>
                 </div>
               </div>
             </div>
@@ -873,6 +853,7 @@ const app = document.querySelector("#app");
     function initPlayer() {
       const stage = document.querySelector("#playerStage");
       const playBtn = document.querySelector("#playBtn");
+      const fullscreenBtn = document.querySelector("#fullscreenBtn");
       const progress = document.querySelector("#progress");
       const progressBar = document.querySelector("#progressBar");
       const time = document.querySelector("#time");
@@ -890,7 +871,20 @@ const app = document.querySelector("#app");
       stage.addEventListener("pointerdown", showControls);
       playBtn.addEventListener("click", () => {
         playing = !playing;
-        playBtn.textContent = playing ? "â…¡" : "â–¶";
+        playBtn.innerHTML = playing ? "&#10074;&#10074;" : "&#9654;";
+        playBtn.setAttribute("aria-label", playing ? "Pausar" : "Reproduzir");
+      });
+      fullscreenBtn.addEventListener("click", () => {
+        if (document.fullscreenElement) {
+          document.exitFullscreen();
+          return;
+        }
+        stage.requestFullscreen?.();
+      });
+      document.addEventListener("fullscreenchange", () => {
+        const fullscreen = document.fullscreenElement === stage;
+        fullscreenBtn.setAttribute("aria-label", fullscreen ? "Sair da tela cheia" : "Tela cheia");
+        fullscreenBtn.title = fullscreen ? "Sair da tela cheia" : "Tela cheia";
       });
       progress.addEventListener("click", (event) => {
         const rect = progress.getBoundingClientRect();
@@ -908,64 +902,101 @@ const app = document.querySelector("#app");
 
     function renderReader() {
       window.onpointermove = null;
-      shell(`
-        <div class="reader-shell">
+      app.innerHTML = `
+        <section class="screen page reader-screen">
+          <button class="dimension-back" type="button" data-route="/hub">&larr; Voltar ao Hub</button>
+          <div class="reader-shell">
           <div class="reader-toolbar glass">
             <div>
               <span class="eyebrow">Sakura Engine</span>
               <h2>Capitulo 42</h2>
             </div>
             <div class="reader-actions">
-              <button class="control-btn" id="prevPage" title="Pagina anterior" aria-label="Pagina anterior">â€¹</button>
+              <button class="control-btn" id="prevPage" title="Pagina anterior" aria-label="Pagina anterior">&lsaquo;</button>
               <span class="reader-counter" id="readerCounter">1 / 5</span>
-              <button class="control-btn" id="nextPage" title="Proxima pagina" aria-label="Proxima pagina">â€º</button>
+              <button class="control-btn" id="nextPage" title="Proxima pagina" aria-label="Proxima pagina">&rsaquo;</button>
             </div>
           </div>
           <article class="manga-page glass">
             <div class="manga-panel" id="mangaPanel"></div>
           </article>
-        </div>
-      `, "reader-screen");
+          </div>
+        </section>
+      `;
       initReader();
     }
 
     function renderLibrary() {
       window.onpointermove = null;
+      const config = {
+        className: "library-dimension",
+        title: "Biblioteca",
+        subtitle: "Seus favoritos, progresso e leituras recentes reunidos em um unico universo.",
+        accent: "#4de8ff",
+        accentTwo: "#8c6cff",
+        deep: "#020713",
+        haze: "#071329",
+        glow: "rgba(77, 232, 255, .3)"
+      };
       const items = [
-        ...data.movies.slice(0, 2).map((item) => ({ ...item, kind: "Filme", action: "Assistir", route: "/player" })),
-        ...data.series.slice(0, 2).map((item) => ({ ...item, kind: "Serie", action: "Assistir", route: "/player" })),
-        ...data.manga.slice(0, 2).map((item) => ({ ...item, kind: "Manga", action: "Ler", route: "/leitor" }))
+        ...data.movies.slice(0, 2).map((item) => ({ ...item, cat: "Filme", route: "/player" })),
+        ...data.series.slice(0, 2).map((item) => ({ ...item, cat: "Serie", route: "/player" })),
+        ...data.manga.slice(0, 2).map((item) => ({ ...item, cat: "Manga", route: "/leitor" }))
       ];
-      shell(`
-        <div class="orb-layer" id="orbs"></div>
-        <div class="layout">
-          <div class="headline">
-            <span class="eyebrow">Seu painel</span>
-            <h1>Biblioteca</h1>
-            <p>Favoritos mockados, progresso salvo na sessao e atalhos para voltar ao player ou ao leitor.</p>
-          </div>
-          <section class="content-grid">
-            ${items.map((item, index) => `
-              <article class="content-card" style="--theme:${index % 2 ? "var(--cyan)" : "var(--gold)"}">
-                <div class="poster">
-                  <img src="${item.img}" alt="${item.title}">
-                  <span class="badge">${item.kind}</span>
-                </div>
-                <div class="card-body">
-                  <h3>${item.title}</h3>
-                  <p>${item.meta}</p>
-                  <div class="progress" aria-label="Progresso"><div class="progress-bar" style="width:${35 + index * 9}%"></div></div>
-                  <div class="card-actions">
-                    <button class="ghost" data-route="${item.route}">${item.action}</button>
-                    <button class="icon-button" title="Favoritar" aria-label="Favoritar" data-fav="${index}">â˜…</button>
-                  </div>
-                </div>
-              </article>
-            `).join("")}
+      app.innerHTML = `
+        <section class="screen page dimension-screen library-screen ${config.className}" style="${dimensionVars(config)}">
+          <button class="dimension-back" type="button" data-route="/hub">&larr; Voltar ao Hub</button>
+          <header class="dimension-header">
+            <h1>${config.title}</h1>
+            <p>${config.subtitle}</p>
+          </header>
+          <section class="dimension-grid library-grid" aria-label="Itens da biblioteca">
+            ${items.map((item, index) => libraryCard(item, index)).join("")}
           </section>
-        </div>
-      `, "hub-screen");
-      createOrbs();
+        </section>
+      `;
+    }
+
+    function libraryCard(item, index) {
+      const details = libraryDetails(item, index);
+      const playerReturn = item.cat === "Filme" ? "/filmes" : item.cat === "Serie" ? "/series" : "";
+      return `
+        <button class="dimension-card library-card" type="button" data-route="${item.route}" ${playerReturn ? `data-player-return="${playerReturn}"` : ""}>
+          <div class="dimension-card-bg" style="background-image:url('${item.img}')"></div>
+          <div class="dimension-card-top">
+            <span class="year-pill">${details.kind}</span>
+          </div>
+          <div class="dimension-card-body">
+            <h3>${item.title}</h3>
+            <p>${details.progress}</p>
+            <small>${details.part}</small>
+          </div>
+        </button>
+      `;
+    }
+
+    function libraryDetails(item, index) {
+      const progressByType = {
+        Filme: [
+          { progress: "Continuar em 42:18 de 2h12m", part: "Parte: Cruzando o sol morto" },
+          { progress: "Continuar em 1:08:04 de 1h48m", part: "Parte: Eclipse vermelho" }
+        ],
+        Serie: [
+          { progress: "Continuar no episodio 4", part: "Temporada 2: Sinal aberto - 18:32" },
+          { progress: "Continuar no episodio 7", part: "Temporada 1: Corrida fantasma - 31:10" }
+        ],
+        Manga: [
+          { progress: "Continuar no capitulo 42", part: "Pagina 3 de 5: O motor acordou" },
+          { progress: "Continuar no capitulo 19", part: "Pagina 2 de 5: Carta lunar" }
+        ]
+      };
+      const [fallback] = progressByType[item.cat] || [{ progress: item.meta, part: "Continuar de onde parou" }];
+      const details = progressByType[item.cat]?.[index % 2] || fallback;
+      return {
+        kind: item.cat,
+        progress: details.progress,
+        part: details.part
+      };
     }
 
     function initReader() {
@@ -1004,7 +1035,9 @@ const app = document.querySelector("#app");
     document.addEventListener("click", (event) => {
       const fav = event.target.closest("[data-fav]");
       if (!fav) return;
-      fav.textContent = fav.textContent === "â˜…" ? "â˜†" : "â˜…";
+      const active = fav.classList.toggle("active");
+      fav.innerHTML = active ? "&#9733;" : "&#9734;";
+      fav.setAttribute("aria-pressed", active ? "true" : "false");
     });
 
     render();

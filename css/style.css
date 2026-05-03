@@ -533,6 +533,12 @@
       flex: 1;
     }
 
+    .icon-button.active {
+      color: var(--gold);
+      border-color: color-mix(in srgb, var(--gold) 64%, rgba(255, 255, 255, .16));
+      background: rgba(255, 209, 102, .12);
+    }
+
     .rain-symbol {
       position: absolute;
       top: -42px;
@@ -687,9 +693,53 @@
     }
 
     .reader-screen {
+      --dimension-accent: var(--pink);
+      padding: 32px 28px 64px;
       background:
         radial-gradient(circle at 50% 8%, rgba(255, 159, 199, .18), transparent 28%),
         linear-gradient(180deg, #0d0b14, #160d18 52%, #08070e);
+    }
+
+    .library-screen {
+      --dimension-accent: var(--cyan);
+      padding: 32px 28px 64px;
+      overflow-x: hidden;
+      overflow-y: auto;
+    }
+
+    .reader-screen .dimension-back,
+    .library-screen .dimension-back {
+      display: block;
+      margin-bottom: 24px;
+    }
+
+    .library-screen .dimension-header {
+      margin-bottom: 36px;
+    }
+
+    .library-grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .library-card {
+      display: block;
+      width: 100%;
+      min-height: 256px;
+      color: inherit;
+      text-align: left;
+    }
+
+    .library-card .dimension-card-bg {
+      opacity: .3;
+    }
+
+    .library-card:hover .dimension-card-bg,
+    .library-card:focus-visible .dimension-card-bg {
+      opacity: .42;
+    }
+
+    .library-card .dimension-card-top {
+      justify-content: flex-end;
     }
 
     .reader-shell {
@@ -839,6 +889,14 @@
         padding: 18px;
       }
 
+      .library-screen {
+        padding: 24px 18px 54px;
+      }
+
+      .library-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
       .topbar {
         margin: -18px -18px 18px;
         align-items: flex-start;
@@ -880,7 +938,35 @@
       }
     }
 
+    @media (min-width: 861px) and (max-width: 1180px) {
+      .library-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 700px) {
+      .library-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
     @media (max-width: 540px) {
+      .library-screen {
+        padding: 18px 16px 44px;
+      }
+
+      .library-screen .dimension-back {
+        width: 100%;
+      }
+
+      .library-card {
+        min-height: 220px;
+      }
+
+      .library-grid {
+        grid-template-columns: 1fr;
+      }
+
       .topbar {
         display: grid;
       }
@@ -2697,174 +2783,6 @@
       }
     }
 
-    /* User profile selection */
-    .users-screen {
-      min-height: 100vh;
-      padding: 28px;
-      overflow: hidden;
-      background:
-        radial-gradient(circle at 50% 30%, rgba(111, 91, 255, .23), transparent 28%),
-        radial-gradient(circle at 28% 70%, rgba(77, 232, 255, .13), transparent 26%),
-        radial-gradient(circle at 80% 64%, rgba(255, 79, 216, .12), transparent 26%),
-        linear-gradient(135deg, #030812, #0b0618 50%, #020203);
-    }
-
-    .users-screen::before {
-      content: "";
-      position: absolute;
-      inset: 0;
-      z-index: 0;
-      background:
-        linear-gradient(90deg, rgba(255, 255, 255, .024) 1px, transparent 1px),
-        linear-gradient(180deg, rgba(255, 255, 255, .018) 1px, transparent 1px);
-      background-size: 62px 62px;
-      mask-image: radial-gradient(circle at 50% 40%, black, transparent 78%);
-      pointer-events: none;
-    }
-
-    .users-back,
-    .users-shell,
-    .hub-account-bar {
-      position: relative;
-      z-index: 2;
-    }
-
-    .users-shell {
-      display: grid;
-      align-content: center;
-      justify-items: center;
-      gap: clamp(34px, 6vh, 58px);
-      min-height: calc(100vh - 74px);
-      width: min(1040px, 100%);
-      margin: 0 auto;
-    }
-
-    .users-title {
-      display: grid;
-      justify-items: center;
-      gap: 8px;
-      text-align: center;
-    }
-
-    .users-title span {
-      color: #8ec4ff;
-      font-size: .88rem;
-      font-weight: 900;
-      letter-spacing: .22em;
-      text-transform: uppercase;
-    }
-
-    .users-title h1 {
-      max-width: none;
-      font-size: clamp(2.4rem, 6vw, 5rem);
-      line-height: .95;
-      background: linear-gradient(90deg, #6aa7ff, #9b6cff 48%, #ff5cce);
-      -webkit-background-clip: text;
-      background-clip: text;
-      color: transparent;
-      filter: drop-shadow(0 0 24px rgba(117, 132, 255, .42));
-    }
-
-    .users-title p {
-      color: rgba(255, 255, 255, .68);
-      font-weight: 700;
-    }
-
-    .users-grid {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(150px, 1fr));
-      gap: 18px;
-      width: 100%;
-    }
-
-    .user-card {
-      position: relative;
-      display: grid;
-      justify-items: center;
-      gap: 12px;
-      min-height: 236px;
-      padding: 24px 16px;
-      overflow: hidden;
-      border: 1px solid rgba(255, 255, 255, .14);
-      border-radius: 14px;
-      background:
-        radial-gradient(circle at 50% 22%, rgba(255, 255, 255, .12), transparent 32%),
-        linear-gradient(145deg, rgba(36, 32, 58, .76), rgba(10, 10, 18, .68));
-      color: #fff;
-      box-shadow: 0 22px 58px rgba(0, 0, 0, .35);
-      backdrop-filter: blur(18px);
-      transition: transform .22s ease, border-color .22s ease, box-shadow .22s ease;
-    }
-
-    .user-card::before {
-      content: "";
-      position: absolute;
-      inset: -38%;
-      background: conic-gradient(from 80deg, transparent, rgba(77, 232, 255, .18), transparent, rgba(255, 79, 216, .18), transparent);
-      opacity: 0;
-      transition: opacity .22s ease, transform .5s ease;
-      pointer-events: none;
-    }
-
-    .user-card:hover,
-    .user-card:focus-visible {
-      transform: translateY(-8px);
-      border-color: rgba(140, 108, 255, .74);
-      box-shadow: 0 30px 78px rgba(0, 0, 0, .48), 0 0 34px rgba(140, 108, 255, .24);
-      outline: 0;
-    }
-
-    .user-card:hover::before,
-    .user-card:focus-visible::before {
-      opacity: 1;
-      transform: rotate(18deg);
-    }
-
-    .user-orbit {
-      position: relative;
-      display: grid;
-      place-items: center;
-      width: 96px;
-      aspect-ratio: 1;
-      border-radius: 50%;
-      background:
-        radial-gradient(circle at 35% 30%, rgba(255, 255, 255, .9), transparent 8%),
-        linear-gradient(135deg, rgba(77, 232, 255, .28), rgba(255, 79, 216, .24));
-      box-shadow: inset 0 0 24px rgba(255, 255, 255, .08), 0 0 28px rgba(77, 232, 255, .18);
-    }
-
-    .user-orbit::before {
-      content: "";
-      position: absolute;
-      width: 122px;
-      height: 46px;
-      border: 2px solid rgba(142, 196, 255, .52);
-      border-left-color: transparent;
-      border-right-color: rgba(255, 92, 206, .52);
-      border-radius: 50%;
-      transform: rotate(-18deg);
-    }
-
-    .user-orbit span {
-      position: relative;
-      z-index: 1;
-      font-size: 3rem;
-      filter: drop-shadow(0 8px 18px rgba(0, 0, 0, .32));
-    }
-
-    .user-card strong {
-      font-size: 1.2rem;
-      text-transform: uppercase;
-      letter-spacing: .04em;
-    }
-
-    .user-card small {
-      color: rgba(255, 255, 255, .66);
-      font-size: .82rem;
-      font-weight: 800;
-      text-align: center;
-    }
-
     .hub-account-bar {
       position: absolute;
       top: 29px;
@@ -2878,41 +2796,102 @@
       position: static;
       top: auto;
       right: auto;
-    }
-
-    .active-user {
       display: inline-flex;
       align-items: center;
-      gap: 9px;
-      min-height: 50px;
-      padding: 0 16px;
-      border: 1px solid rgba(142, 196, 255, .3);
-      border-radius: 10px;
-      background: rgba(0, 0, 0, .42);
-      color: #fff;
-      font-weight: 950;
-      backdrop-filter: blur(14px);
+      justify-content: center;
+      min-width: 150px;
     }
 
-    .active-user span {
+    .account-menu .logout-button::before {
+      content: none;
+    }
+
+    .account-menu {
+      position: relative;
+    }
+
+    .account-menu summary {
+      list-style: none;
+    }
+
+    .account-menu summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .account-menu-panel {
+      position: absolute;
+      top: calc(100% + 10px);
+      right: 0;
       display: grid;
-      place-items: center;
-      width: 28px;
-      aspect-ratio: 1;
-      border-radius: 50%;
-      background: rgba(255, 255, 255, .12);
+      gap: 6px;
+      width: min(260px, calc(100vw - 36px));
+      padding: 10px;
+      border: 1px solid rgba(255, 255, 255, .16);
+      border-radius: 12px;
+      background: rgba(5, 8, 18, .88);
+      box-shadow: 0 24px 70px rgba(0, 0, 0, .42);
+      backdrop-filter: blur(18px);
     }
 
-    .active-user:hover {
-      border-color: rgba(140, 108, 255, .72);
-      background: rgba(255, 255, 255, .1);
+    .account-menu:not([open]) .account-menu-panel {
+      display: none;
+    }
+
+    .account-menu-user,
+    .account-menu-panel button {
+      width: 100%;
+      min-height: 44px;
+      border: 1px solid rgba(255, 255, 255, .11);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, .07);
+      color: #fff;
+    }
+
+    .account-menu-user {
+      display: grid;
+      gap: 2px;
+      align-content: center;
+      padding: 8px 12px;
+    }
+
+    .account-menu-user span {
+      color: rgba(255, 255, 255, .58);
+      font-size: .72rem;
+      font-weight: 850;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .account-menu-user strong {
+      overflow: hidden;
+      font-size: .95rem;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .account-menu-panel button {
+      padding: 0 12px;
+      text-align: left;
+      font-weight: 850;
+      transition: border-color .2s ease, background .2s ease, color .2s ease;
+    }
+
+    .account-menu-panel button:hover {
+      border-color: rgba(77, 232, 255, .48);
+      background: rgba(77, 232, 255, .12);
+    }
+
+    .account-menu-panel button.danger {
+      color: #ffb08f;
+    }
+
+    .account-menu-panel button.danger:hover {
+      border-color: rgba(255, 154, 107, .58);
+      background: rgba(255, 154, 107, .12);
+      color: #ffd2bf;
     }
 
     @media (max-width: 860px) {
-      .users-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-
       .hub-account-bar {
         position: relative;
         top: auto;
@@ -2922,21 +2901,17 @@
     }
 
     @media (max-width: 540px) {
-      .users-screen {
-        padding: 18px;
-      }
-
-      .users-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .user-card {
-        min-height: 190px;
-      }
-
       .hub-account-bar {
-        flex-direction: column;
-        align-items: stretch;
+        justify-content: stretch;
+      }
+
+      .account-menu,
+      .account-menu .logout-button {
+        width: 100%;
+      }
+
+      .account-menu-panel {
+        width: 100%;
       }
     }
 
@@ -3637,35 +3612,6 @@
       backdrop-filter: blur(12px);
     }
 
-    .hub-quick-nav {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 10px;
-      width: min(760px, 100%);
-    }
-
-    .hub-quick-nav button {
-      min-height: 40px;
-      padding: 0 14px;
-      border: 1px solid rgba(255, 255, 255, .14);
-      border-radius: 999px;
-      background: rgba(255, 255, 255, .07);
-      color: rgba(255, 255, 255, .76);
-      font-weight: 850;
-      backdrop-filter: blur(12px);
-    }
-
-    .hub-quick-nav button:hover {
-      color: #fff;
-      border-color: rgba(142, 196, 255, .44);
-      background: rgba(142, 196, 255, .12);
-    }
-
-    .active-user {
-      box-shadow: 0 14px 38px rgba(0, 0, 0, .22);
-    }
-
     @keyframes nebulaBreathe {
       from {
         transform: scale(1) rotate(-2deg);
@@ -3941,7 +3887,6 @@
         justify-content: space-between;
       }
 
-      .initial-hub .active-user,
       .initial-hub .logout-button {
         min-height: 38px;
         padding: 0 10px;
@@ -4005,17 +3950,6 @@
         font-size: .68rem;
       }
 
-      .hub-quick-nav {
-        justify-content: center;
-        gap: 6px;
-      }
-
-      .hub-quick-nav button {
-        flex: 0 1 auto;
-        min-height: 32px;
-        padding: 0 10px;
-        font-size: .74rem;
-      }
     }
 
     @media (prefers-reduced-motion: reduce) {
