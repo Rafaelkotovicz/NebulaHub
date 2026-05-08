@@ -42,6 +42,23 @@
       ]
     };
 
+    const featuredContent = {
+      movies: {
+        title: "Quantum Nexus",
+        tag: "Destaque",
+        meta: "Acao | 2h 08m",
+        desc: "Uma anomalia vermelha abre uma sessao que mistura acao, ficcao e perigo cosmico.",
+        img: "https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?auto=format&fit=crop&w=1400&q=80"
+      },
+      series: {
+        title: "Blue Protocol",
+        tag: "S02",
+        meta: "8 episodios",
+        desc: "Uma temporada feita de sinais, memoria digital e escolhas que nao ficam quietas.",
+        img: assets.series[0]
+      }
+    };
+
     const routes = {
       "/": renderAuth,
       "/hub": renderHub,
@@ -53,18 +70,41 @@
       "/biblioteca": renderLibrary
     };
 
-    function routeHref(path) {
-      const query = new URLSearchParams(location.search);
+    const playerRoutes = {
+      movies: {
+        returnRoute: "/filmes",
+        label: "Filme",
+        accent: "#ff2b1f",
+        accentTwo: "#ff6b00"
+      },
+      series: {
+        returnRoute: "/series",
+        label: "Serie",
+        accent: "#2478ff",
+        accentTwo: "#00c2ff"
+      }
+    };
+
+    function routeHref(path, params = {}) {
+      const query = new URLSearchParams();
       query.set("route", path);
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== "") {
+          query.set(key, value);
+        }
+      });
       return `${location.pathname}?${query.toString()}`;
     }
 
-    function navigate(path) {
+    function navigate(path, params = {}) {
       const currentPath = getRoute();
       if (path === "/player" && ["/filmes", "/series"].includes(currentPath)) {
         sessionStorage.setItem("nebulaPlayerReturnRoute", currentPath);
       }
-      history.pushState({ route: path }, "", routeHref(path));
+      if (path === "/player" && params.type && params.id) {
+        sessionStorage.setItem("nebulaSelectedMedia", JSON.stringify(params));
+      }
+      history.pushState({ route: path, ...params }, "", routeHref(path, params));
       render();
     }
 
@@ -75,6 +115,37 @@
     function getPlayerReturnRoute() {
       const savedRoute = sessionStorage.getItem("nebulaPlayerReturnRoute");
       return ["/filmes", "/series"].includes(savedRoute) ? savedRoute : "/filmes";
+    }
+
+    function slugify(value) {
+      return value
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "");
+    }
+
+    function mediaId(item) {
+      return item.id || slugify(item.title);
+    }
+
+    function playerNavigationAttrs(type, item, extra = {}) {
+      const route = playerRoutes[type];
+      if (!route || !item) return "";
+      const params = { type, id: mediaId(item), ...extra };
+      const attrs = Object.entries(params)
+        .map(([key, value]) => `data-${key === "id" ? "media-id" : key === "type" ? "media-type" : key}="${value}"`)
+        .join(" ");
+      return `${attrs} data-player-return="${route.returnRoute}"`;
+    }
+
+    function getRouteParams(element) {
+      const params = {};
+      if (element.dataset.mediaType) params.type = element.dataset.mediaType;
+      if (element.dataset.mediaId) params.id = element.dataset.mediaId;
+      if (element.dataset.episode) params.episode = element.dataset.episode;
+      return params;
     }
 
     function render() {
@@ -108,7 +179,7 @@
       if (link.dataset.playerReturn) {
         sessionStorage.setItem("nebulaPlayerReturnRoute", link.dataset.playerReturn);
       }
-      navigate(link.dataset.route);
+      navigate(link.dataset.route, getRouteParams(link));
     });
 
     function shell(content, className = "") {
@@ -618,8 +689,9 @@
 
     function railCard(item, index, route, type) {
       const progress = 22 + (index * 17) % 62;
+      const playerAttrs = route === "/player" ? ` ${playerNavigationAttrs(type, item)}` : "";
       return `
-        <article class="rail-card" data-route="${route}" tabindex="0">
+        <article class="rail-card" data-route="${route}"${playerAttrs} tabindex="0">
           <div class="rail-thumb">
             <img src="${item.img}" alt="${item.title}">
             <span class="rank">${index + 1}</span>
@@ -650,6 +722,9 @@
 
     function renderDimension(config, items) {
       window.onpointermove = null;
+      const featureAttrs = config.actionRoute === "/player"
+        ? ` ${playerNavigationAttrs(config.type, config.feature.media || items[0])}`
+        : "";
       app.innerHTML = `
         <section class="screen page dimension-screen ${config.className}" style="${dimensionVars(config)}">
           ${config.effect || ""}
@@ -663,7 +738,7 @@
             <span class="eyebrow">Em destaque</span>
             <h2>${config.feature.title}</h2>
             <p>${config.feature.text}</p>
-            <button class="dimension-cta" type="button" data-route="${config.actionRoute}">${config.actionLabel}</button>
+            <button class="dimension-cta" type="button" data-route="${config.actionRoute}"${featureAttrs}>${config.actionLabel}</button>
           </section>
           ${config.categories ? dimensionCategories(config.categories) : ""}
           <section class="dimension-grid" id="${config.gridId}">
@@ -676,6 +751,7 @@
     function dimensionConfig(type) {
       const configs = {
         movies: {
+          type: "movies",
           className: "cinema-dimension",
           title: "Cinema Dimensional",
           subtitle: "Filmes que parecem atravessar a tela antes mesmo do play.",
@@ -690,10 +766,12 @@
           gridId: "movieGrid",
           feature: {
             title: "Quantum Nexus",
-            text: "Uma anomalia vermelha abre uma sessao que mistura acao, ficcao e perigo cosmico."
+            text: "Uma anomalia vermelha abre uma sessao que mistura acao, ficcao e perigo cosmico.",
+            media: featuredContent.movies
           }
         },
         series: {
+          type: "series",
           className: "series-dimension",
           title: "Cronicas Infinitas",
           subtitle: "Temporadas em fluxo azul, episodios vivos e progresso sempre perto.",
@@ -709,7 +787,8 @@
           effect: `<div class="rain-layer" id="rain"></div>`,
           feature: {
             title: "Blue Protocol",
-            text: "Uma temporada feita de sinais, memoria digital e escolhas que nao ficam quietas."
+            text: "Uma temporada feita de sinais, memoria digital e escolhas que nao ficam quietas.",
+            media: featuredContent.series
           }
         }
       };
@@ -730,6 +809,7 @@
 
     function dimensionCard(item, index, config) {
       const details = dimensionDetails(item, index, config.className);
+      const actionAttrs = config.actionRoute === "/player" ? ` ${playerNavigationAttrs(config.type, item)}` : "";
       return `
         <article class="dimension-card" data-cat="${item.cat || details.genre}" tabindex="0">
           <div class="dimension-card-bg" style="background-image:url('${item.img}')"></div>
@@ -742,7 +822,7 @@
             <p>${details.genre}</p>
             <small>${details.length}</small>
             <div class="card-actions">
-              <button class="ghost" data-route="${config.actionRoute}">${details.action}</button>
+              <button class="ghost" data-route="${config.actionRoute}"${actionAttrs}>${details.action}</button>
               <button class="icon-button" title="Favoritar" aria-label="Favoritar" aria-pressed="false" data-fav="${index}">&#9734;</button>
             </div>
           </div>
@@ -822,24 +902,119 @@
       `).join("");
     }
 
+    function getStoredPlayerParams() {
+      try {
+        return JSON.parse(sessionStorage.getItem("nebulaSelectedMedia") || "{}");
+      } catch {
+        return {};
+      }
+    }
+
+    function getSelectedPlayerParams() {
+      const query = new URLSearchParams(location.search);
+      const stored = getStoredPlayerParams();
+      return {
+        type: query.get("type") || stored.type || "movies",
+        id: query.get("id") || stored.id || mediaId(data.movies[0]),
+        episode: query.get("episode") || stored.episode || ""
+      };
+    }
+
+    function findPlayableMedia(type, id) {
+      const pool = [featuredContent[type], ...(data[type] || [])].filter(Boolean);
+      return pool.find((item) => mediaId(item) === id) || pool[0] || data.movies[0];
+    }
+
+    function mediaIndex(type, item) {
+      return Math.max(0, (data[type] || []).findIndex((entry) => mediaId(entry) === mediaId(item)));
+    }
+
+    function secondsFromMeta(meta, fallback) {
+      const match = String(meta).match(/(\d+)h\s*(\d+)m/i);
+      if (!match) return fallback;
+      return (Number(match[1]) * 3600) + (Number(match[2]) * 60);
+    }
+
+    function formatTime(seconds) {
+      const safeSeconds = Math.max(0, Math.round(seconds));
+      const hours = Math.floor(safeSeconds / 3600);
+      const minutes = Math.floor((safeSeconds % 3600) / 60);
+      const remaining = safeSeconds % 60;
+      if (hours) {
+        return `${hours}:${String(minutes).padStart(2, "0")}:${String(remaining).padStart(2, "0")}`;
+      }
+      return `${minutes}:${String(remaining).padStart(2, "0")}`;
+    }
+
+    function playbackInfo(type, item, requestedEpisode) {
+      const id = mediaId(item);
+      const profiles = {
+        "quantum-nexus": { current: 18 * 60 + 42, total: 2 * 3600 + 8 * 60, chapter: "Fenda vermelha" },
+        "helios-drift": { current: 42 * 60 + 18, chapter: "Cruzando o sol morto" },
+        "noite-carmesim": { current: 19 * 60 + 8, chapter: "Eclipse vermelho" },
+        "o-ultimo-atlas": { current: 36 * 60 + 45, chapter: "Mapa vivo" },
+        "frame-zero": { current: 27 * 60 + 12, chapter: "Corte impossivel" },
+        "blue-protocol": { episode: 4, season: 2, current: 18 * 60 + 32, total: 48 * 60, chapter: "Sinal aberto" },
+        "circuito-fantasma": { episode: 7, season: 1, current: 31 * 60 + 10, total: 44 * 60, chapter: "Corrida fantasma" },
+        "kernel-9": { episode: 2, season: 1, current: 12 * 60 + 54, total: 46 * 60, chapter: "Permissao raiz" },
+        "neon-vale": { episode: 10, season: 1, current: 28 * 60 + 21, total: 50 * 60, chapter: "Cidade submersa" }
+      };
+      const profile = profiles[id] || {};
+      const index = mediaIndex(type, item);
+      const movieGenres = ["Sci-Fi", "Acao", "Thriller", "Aventura"];
+      const seriesGenres = ["Cyberpunk", "Misterio", "Sci-Fi", "Drama"];
+      const route = playerRoutes[type] || playerRoutes.movies;
+      const isSeries = type === "series";
+      const total = profile.total || (isSeries ? (44 + index * 2) * 60 : secondsFromMeta(item.meta, 112 * 60));
+      const current = Math.min(profile.current || Math.round(total * .24), Math.max(0, total - 10));
+      const episode = Number(requestedEpisode || profile.episode || 1);
+      const season = profile.season || Number(String(item.tag).replace(/\D/g, "")) || 1;
+      const genre = isSeries ? seriesGenres[index % seriesGenres.length] : (item.meta.split("|")[0] || movieGenres[index % movieGenres.length]).trim();
+      return {
+        label: route.label,
+        accent: route.accent,
+        accentTwo: route.accentTwo,
+        returnRoute: route.returnRoute,
+        total,
+        current,
+        percent: Math.max(0, Math.min(100, (current / total) * 100)),
+        subtitle: isSeries
+          ? `T${season}:E${episode} - ${genre} - ${profile.chapter || "Episodio atual"}`
+          : `${genre} - ${item.meta.split("|").pop().trim()} - ${profile.chapter || "Sessao principal"}`
+      };
+    }
+
+    function resolvePlayerContent() {
+      const params = getSelectedPlayerParams();
+      const type = playerRoutes[params.type] ? params.type : "movies";
+      const item = findPlayableMedia(type, params.id);
+      return {
+        type,
+        item,
+        info: playbackInfo(type, item, params.episode)
+      };
+    }
+
     function renderPlayer() {
       window.onpointermove = null;
-      const returnRoute = getPlayerReturnRoute();
+      const player = resolvePlayerContent();
+      const poster = player.item.img.replace(/"/g, "%22");
       app.innerHTML = `
-        <section class="screen page player-screen">
-          <div class="player-stage" id="playerStage">
-            <div class="fake-video">
+        <section class="screen page player-screen" style="--player-accent:${player.info.accent};--player-accent-2:${player.info.accentTwo};">
+          <div class="player-stage ${player.type}-player" id="playerStage">
+            <div class="fake-video" style="--player-poster:url('${poster}')">
               <div class="video-title">
                 <span class="eyebrow">Reproduzindo agora</span>
-                <h2>Helios Drift</h2>
+                <h2>${player.item.title}</h2>
+                <p class="video-meta">${player.info.subtitle}</p>
               </div>
               <div class="player-controls">
-                <div class="progress" id="progress"><div class="progress-bar" id="progressBar"></div></div>
+                <div class="progress" id="progress" aria-label="Progresso do video"><div class="progress-bar" id="progressBar" style="width:${player.info.percent}%"></div></div>
                 <div class="control-row">
                   <button class="control-btn" id="playBtn" title="Play/Pause" aria-label="Pausar">&#10074;&#10074;</button>
-                  <span class="time" id="time">42:18 / 1:52:00</span>
+                  <span class="time" id="time">${formatTime(player.info.current)} / ${formatTime(player.info.total)}</span>
                   <input class="volume" id="volume" type="range" min="0" max="100" value="74" aria-label="Volume">
-                  <button class="ghost" data-route="${returnRoute}">Voltar</button>
+                  <button class="ghost" data-route="${player.info.returnRoute}">Voltar</button>
                   <button class="control-btn" id="fullscreenBtn" title="Tela cheia" aria-label="Tela cheia">&#9974;</button>
                 </div>
               </div>
@@ -847,10 +1022,10 @@
           </div>
         </section>
       `;
-      initPlayer();
+      initPlayer(player.info);
     }
 
-    function initPlayer() {
+    function initPlayer(playerInfo) {
       const stage = document.querySelector("#playerStage");
       const playBtn = document.querySelector("#playBtn");
       const fullscreenBtn = document.querySelector("#fullscreenBtn");
@@ -858,8 +1033,14 @@
       const progressBar = document.querySelector("#progressBar");
       const time = document.querySelector("#time");
       let playing = true;
-      let percent = 38;
+      let currentSeconds = playerInfo.current;
       let hideTimer;
+
+      function updateProgress() {
+        const percent = Math.max(0, Math.min(100, (currentSeconds / playerInfo.total) * 100));
+        progressBar.style.width = `${percent}%`;
+        time.textContent = `${formatTime(currentSeconds)} / ${formatTime(playerInfo.total)}`;
+      }
 
       function showControls() {
         stage.classList.remove("hide-controls");
@@ -888,15 +1069,16 @@
       });
       progress.addEventListener("click", (event) => {
         const rect = progress.getBoundingClientRect();
-        percent = Math.max(0, Math.min(100, ((event.clientX - rect.left) / rect.width) * 100));
-        progressBar.style.width = `${percent}%`;
-        time.textContent = `${Math.round(percent)}:00 / 1:52:00`;
+        const percent = Math.max(0, Math.min(100, ((event.clientX - rect.left) / rect.width) * 100));
+        currentSeconds = Math.round((percent / 100) * playerInfo.total);
+        updateProgress();
       });
       setInterval(() => {
         if (!playing) return;
-        percent = Math.min(100, percent + .08);
-        progressBar.style.width = `${percent}%`;
+        currentSeconds = Math.min(playerInfo.total, currentSeconds + 1);
+        updateProgress();
       }, 600);
+      updateProgress();
       showControls();
     }
 
@@ -939,8 +1121,8 @@
         glow: "rgba(77, 232, 255, .3)"
       };
       const items = [
-        ...data.movies.slice(0, 2).map((item) => ({ ...item, cat: "Filme", route: "/player" })),
-        ...data.series.slice(0, 2).map((item) => ({ ...item, cat: "Serie", route: "/player" })),
+        ...data.movies.slice(0, 2).map((item) => ({ ...item, cat: "Filme", mediaType: "movies", route: "/player" })),
+        ...data.series.slice(0, 2).map((item) => ({ ...item, cat: "Serie", mediaType: "series", route: "/player" })),
         ...data.manga.slice(0, 2).map((item) => ({ ...item, cat: "Manga", route: "/leitor" }))
       ];
       app.innerHTML = `
@@ -960,8 +1142,11 @@
     function libraryCard(item, index) {
       const details = libraryDetails(item, index);
       const playerReturn = item.cat === "Filme" ? "/filmes" : item.cat === "Serie" ? "/series" : "";
+      const playerAttrs = item.route === "/player"
+        ? ` ${playerNavigationAttrs(item.mediaType, item)}`
+        : playerReturn ? ` data-player-return="${playerReturn}"` : "";
       return `
-        <button class="dimension-card library-card" type="button" data-route="${item.route}" ${playerReturn ? `data-player-return="${playerReturn}"` : ""}>
+        <button class="dimension-card library-card" type="button" data-route="${item.route}"${playerAttrs}>
           <div class="dimension-card-bg" style="background-image:url('${item.img}')"></div>
           <div class="dimension-card-top">
             <span class="year-pill">${details.kind}</span>
